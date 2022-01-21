@@ -1,0 +1,198 @@
+---
+title: 'Project1: Time Series'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = FALSE,
+	message = FALSE,
+	warning = FALSE
+)
+
+library(readr)
+library(tidyverse)
+library(dplyr)
+library(janitor)
+library(kableExtra)
+
+```
+
+# Part1: Import the data
+
+```{r}
+
+cheese_data <- read_csv("Data/cheese_data.csv")
+cheese_data_f1<-cheese_data %>% 
+  filter(factory=="f1")
+cheese_data_f2<-cheese_data %>% 
+  filter(factory=="f2")
+```
+
+# Part2: Clean the data (manage missing values)
+
+```{r}
+cheese_data_f1_filtered<-cheese_data_f1 %>% 
+  mutate_all(na_if, 0)
+
+cheese_data_f2_filtered<-cheese_data_f2 %>% 
+  mutate_all(na_if, 0)
+  
+count_missing_f1<-sum(is.na(cheese_data_f1_filtered))
+  
+count_missing_f2<-sum(is.na(cheese_data_f2_filtered))
+  
+dQ1_f1<-cheese_data_f1_filtered %>% 
+    mutate(across(m1:m5,is.na)) %>% 
+    mutate(total_na=m1+m2+m3+m4+m5) %>% 
+    filter(total_na>1) %>% 
+    select(factory, week, timepoint)
+  
+dQ2_f1<-cheese_data_f1_filtered %>% 
+    anti_join(dQ1_f1)
+  
+dQ2_replaced_f1<-dQ2_f1 %>% 
+    pivot_longer(cols = m1:m5, names_to ="measurements", values_to ="value") %>% 
+    group_by(timepoint) %>% 
+    mutate(four_timepoint_mean = sum(value, na.rm = TRUE)/4) %>%
+    mutate(value=if_else(is.na(value), four_timepoint_mean, value)) %>% 
+    select(-four_timepoint_mean)
+
+dQ1_f2<-cheese_data_f2_filtered %>% 
+    mutate(across(m1:m5,is.na)) %>% 
+    mutate(total_na=m1+m2+m3+m4+m5) %>% 
+    filter(total_na>1) %>% 
+    select(factory, week, timepoint)
+  
+dQ2_f2<-cheese_data_f2_filtered %>% 
+    anti_join(dQ1_f1)
+  
+dQ2_replaced_f2<-dQ2_f2 %>% 
+    pivot_longer(cols = m1:m5, names_to ="measurements", values_to ="value") %>% 
+    group_by(timepoint) %>% 
+    mutate(four_timepoint_mean = sum(value, na.rm = TRUE)/4) %>%
+    mutate(value=if_else(is.na(value), four_timepoint_mean, value)) %>% 
+    select(-four_timepoint_mean)
+
+count_timepointmissing_f1<-dQ1_f1 %>% 
+  count()
+
+count_timepointmissing_f2<-dQ1_f2 %>% 
+  count()
+  
+```
+
+There are `r count_missing_f1` missing values for data in factory f1 and `r count_missing_f2` missing values for data in factory f2.
+
+There are `r count_timepointmissing_f1` missing timepoint values for data in factory f1 and `r count_timepointmissing_f2` missing timepoint values for data in factory f2.
+
+# Part3: Manage unexpected values
+
+```{r}
+  
+dQ3_expected_f1<-dQ2_replaced_f1 %>%
+  filter(between(value, 15, 65))
+
+dQ3_f1_unexpected<-dQ2_replaced_f1 %>% 
+    anti_join(dQ3_expected_f1) %>% 
+    nrow()
+  
+
+dQ3_expected_f2<-dQ2_replaced_f2 %>%
+  filter(between(value, 15, 65))
+
+dQ3_f2_unexpected<-dQ2_replaced_f2 %>% 
+    anti_join(dQ3_expected_f2) %>% 
+  nrow()
+  
+
+```
+  
+The unexpected or suspicious values are  `r dQ3_f1_unexpected` unexpected values for data in factory f1 and `r dQ3_f2_unexpected` unexpected values for data in factory f2.  
+
+# Part4: Compute monitoring statistics for factory f1
+
+```{r}
+  
+spc_data_f1<-dQ3_expected_f1 %>% 
+  select(-factory) %>% 
+  group_by(week,timepoint) %>% 
+  summarize(xbar=mean(value),
+         Range=max(value)-min(value)) 
+
+spc_data_f1_table<-spc_data_f1 %>% 
+  #top_frac(n=10, wt="week") %>% # Cant'manage to demonstrate first 10  rows
+  kbl() %>%
+  kable_styling()
+  
+
+number_row_spc_data_f1<-spc_data_f1 %>% 
+  nrow()
+
+spc_data_f1_average_xbar_range<-spc_data_f1 %>% 
+  summarize(Average_xbar=mean(xbar),
+         Average_Range=mean(Range)) 
+
+spc_data_f1_average_xbar_range_table<-spc_data_f1_average_xbar_range %>% 
+  kbl() %>%
+  kable_styling()
+
+```
+
+Statistics table for spc_data_f1 is:  `r spc_data_f1_table`.
+There are  `r number_row_spc_data_f1` number  of rows in spc_data_f1.
+Average across xbar and Range is:  `r spc_data_f1_average_xbar_range_table`
+
+# Part5: Build Shewhart control charts for factory f1
+
+```{r}
+
+XbarR_constants <- read_csv("Data/XbarR_constants.csv") %>% 
+  filter(n<26) %>% 
+  rename(week=n) %>% 
+  select(week,D3, D4)
+
+XbarR_constants <-rbind(c(week = 1, D3 = 1, D4=1), XbarR_constants)
+
+dQ5<-spc_data_f1_average_xbar_range %>% 
+  left_join(XbarR_constants, by="week") %>% 
+  mutate(LCL=Average_Range*D3,
+         UCL=Average_Range*D4)
+
+ggplot(data=dQ5, aes(x=week)) +
+  geom_line(color="black", aes(y=Average_Range),linetype="dotted")+
+  geom_line(color="red", aes(y=LCL))+
+  geom_line(color="red", aes(y=UCL))+
+  labs(title = "Lineplot of Range vs Timepoint for factory f1", 
+       subtitle = "LCL and UCL values in red and average range value in black",
+       y="Range values",x="Week number") 
+
+# ggplot(data=dQ5, aes(x=time)) +
+#   geom_line(color="black", aes(y=Average_Range),linetype="dotted")+
+#   geom_line(color="red", aes(y=LCL))+
+#   geom_line(color="red", aes(y=UCL))+
+#   labs(title = "Lineplot of Range vs Timepoint for factory f1", 
+#        subtitle = "LCL and UCL values in red and average range value in black",
+#        y="Range values",x="Week number") 
+
+XbarR_constants_xbar <- read_csv("Data/XbarR_constants.csv") %>% 
+  filter(n<26) %>% 
+  rename(week=n) %>% 
+  select(week,A2)
+
+XbarR_constants_xbar <-rbind(c(week = 1, A2=1), XbarR_constants_xbar )
+
+dQ5_xbar<-spc_data_f1_average_xbar_range %>% 
+  left_join(XbarR_constants_xbar, by="week") %>% 
+  mutate(LCL=Average_xbar-Average_Range*A2,
+         UCL=Average_xbar+Average_Range*A2)
+
+ggplot(data=dQ5_xbar, aes(x=week)) +
+  geom_line(color="black", aes(y=Average_xbar),linetype="dotted")+
+  geom_line(color="red", aes(y=LCL))+
+  geom_line(color="red", aes(y=UCL))+
+  labs(title = "Lineplot of Average xbar vs Timepoint for factory f1", 
+       subtitle = "LCL and UCL values in red and average xbar value in black",
+       y="xbar value",x="Week number") 
+
+```

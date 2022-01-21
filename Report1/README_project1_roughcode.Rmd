@@ -1,0 +1,122 @@
+---
+title: 'Project1: Time Series'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Part1: Import the data
+
+```{r}
+
+library(readr)
+library(tidyverse)
+library(dplyr)
+library(OpenStreetMap)
+library(mapview)
+library(mapedit)
+library(sf)
+library(tidyverse)
+library(janitor)
+
+cheese_data <- read_csv("Data/cheese_data.csv")
+cheese_data_f1<-cheese_data %>% 
+  filter(factory=="f1")
+cheese_data_f2<-cheese_data %>% 
+  filter(factory=="f2")
+
+cheese_data_f1_filtered<-cheese_data_f1 %>% 
+  mutate_all(na_if, 0)
+
+cheese_data_f2_filtered<-cheese_data_f2 %>% 
+  mutate_all(na_if, 0)
+  
+  count_missing_f1<-sum(is.na(cheese_data_f1_filtered))
+  
+  count_missing_f2<-sum(is.na(cheese_data_f2_filtered))
+  
+# Method to discard rows with 2 or more NA values
+  
+  #dQ1<-cheese_data_f1_filtered
+  
+  dQ1<-cheese_data_f1_filtered %>% 
+    mutate(across(m1:m5,is.na)) %>% 
+    mutate(total_na=m1+m2+m3+m4+m5) %>% 
+    filter(total_na>1) %>% 
+    select(factory, week, timepoint)
+  
+  dQ2<-cheese_data_f1_filtered %>% 
+    anti_join(dQ1)
+  
+  # dQ2_replaced<-dQ2 %>% 
+  #   mutate(across(m1:m5,is.na)) %>% 
+  #   mutate(total_na=m1+m2+m3+m4+m5) %>% 
+  #   filter(total_na==1) %>% 
+  #   mutate(four_time_point_mean=mean)
+  # 
+  # dQ2_replaced<-dQ2 %>% 
+  #   group_by(timepoint) %>% 
+  #   mutate_if(across(m1:m5)==is.na, average(m1:m5))
+  
+  dQ2_replaced<-dQ2 %>% 
+    pivot_longer(cols = m1:m5, names_to ="measurements", values_to ="value") %>% 
+    group_by(timepoint) %>% 
+    mutate(four_timepoint_mean = sum(value, na.rm = TRUE)/4) %>%
+    mutate(value=if_else(is.na(value), four_timepoint_mean, value)) %>% 
+    select(-four_timepoint_mean)
+    
+    mutate(if_else(is.na(value), four_timepoint_mean, value))
+  
+  replace(is.na(value), four_timepoint_mean)
+  
+    mutate_if(is.na, four_timepoint_mean, value)
+    
+    mutate(timepoint_mean=mean(value))
+  
+  dQ2_replaced<-for(i in 1:nrow(dQ2)){
+  dQ2[is.na(dQ2[,i]), i] <- mean(dQ2[,i], na.rm = TRUE)
+}
+
+library(imputeTS)
+dQ2_replaced<-na_mean(dQ2)
+
+dQ2_replaced<-dQ2 %>% mutate_all(~ifelse(is.na(.x), mean(.x, na.rm = TRUE), .x))   
+
+dQ2_replaced<-dQ2[which(is.na(dQ2[m1:m5])==TRUE)] = mean(dQ2[m1:m5],na.rm = T)
+
+#cheese_data_f1_NA_removed<-cheese_data_f1_filtered[rowSums(is.na(cheese_data_f1_filtered)) < 2, ]
+  
+#cheese_data_f2_NA_removed<-cheese_data_f2_filtered[rowSums(is.na(cheese_data_f2_filtered)) < 3, ]
+
+# Method to replace missing values
+  
+  
+```
+
+There are `r count_missing_f1` missing values for data in factory f1 and `r count_missing_f2` missing values for data in factory f2.
+
+#Part3: Manage unexpected values
+
+```{r}
+  
+dQ3<-cheese_data_f1_filtered
+  
+dQ3_expected<-  dQ3[apply(dQ3[,4:8], 1, function(x) all(x > 65) & all(x < 15)),]
+  
+dQ3_expected<-cheese_data_f1_filtered %>% 
+  pivot_longer(cols=m1:m5, names_to= "measurement_number" , values_to="value" ) %>% 
+  filter(between(value, 15, 65))
+  #filter(value>15||value<65)
+  
+  select(starts_with("m")) %>% 
+  #filter_all(any_vars(.<65 ) || any_vars(.>15))
+  filter_all(any_vars(.<65 )) %>% 
+  filter_all(any_vars(.>15))
+
+  (filter(cols==starts_with("m")) > 65)
+  
+```
+  
+  

@@ -1,0 +1,48 @@
+---
+title: 'Project2: Network data'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = FALSE,
+	warning = FALSE
+)
+```
+
+#Part1: Getting the data
+
+```{r}
+
+library(readr)
+library(tidyverse)
+library(dplyr)
+library(readtext)
+library(tidygraph)
+library(ggraph)
+library(igraph)
+
+movies<-readtext("Movies.paj")
+movies$text
+start_nodes<-str_match(movies$text,"Vertices")
+end_nodes<-str_match(movies$text,"\\*Edges")
+
+edge_data<-movies$text %>%
+  str_sub(start=start_nodes, end = end_nodes)
+movies <- system.file("data/", package = "readtext")
+
+movies<-read_graph("Movies.paj", format = "pajek")
+
+network::read.paj(Movies.paj, verbose = FALSE, debug = FALSE, edge.name = NULL, simplify = FALSE,time.format=c('pajekTiming','networkDynamic'))
+
+
+```
+
+#Part2: Initial visualizations
+
+```{r}
+
+```
+  
+```
