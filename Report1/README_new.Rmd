@@ -15,7 +15,6 @@ library(tidyverse)
 library(dplyr)
 library(janitor)
 library(kableExtra)
-library(tidyr)
 
 ```
 
@@ -33,7 +32,6 @@ cheese_data_f2<-cheese_data %>%
 # Part2: Clean the data (manage missing values)
 
 ```{r}
-
 cheese_data_f1_filtered<-cheese_data_f1 %>% 
   mutate_all(na_if, 0)
 
@@ -193,21 +191,13 @@ library(slider)
 vec<-spc_data_f1 %>% 
   pull(xbar)
 
-highlight<-spc_data_f1 %>% 
-  mutate(is_between=between(xbar,50,52),
-         slide_above_below=case_when(
-           xbar>=51 ~ 1,
-           xbar<51 ~ -1
-         ),
-       moving_ten_sum= slide_sum(x = slide_above_below,  before = 9)
-         # roll_sum = RcppRoll::roll_sum(slide_above_below, 10, align = "right")
-           )
+slide(.x = vec, .f = ~ .x, .before = 1, .after = 1, .complete = TRUE)
+
+mean_observed<-mean(vec)
 
 
-# mean_observed<-mean(vec)
-# 
-# mean_ref_value <- function(x) all(x >= mean_observed)
-# consec_10_values_high <- slide_lgl(.x = vec, .f = mean_ref_value, .before = 9, .complete = TRUE)
+mean_ref_value <- function(x) all(x >= mean_observed)
+consec_10_values_high <- slide_lgl(.x = vec, .f = mean_ref_value, .before = 9, .complete = TRUE)
 
 ```
 

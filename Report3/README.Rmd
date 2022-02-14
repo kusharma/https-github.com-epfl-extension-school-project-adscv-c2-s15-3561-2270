@@ -137,39 +137,48 @@ coord_sf()+
 
 library(rworldmap)
 
-#  data(countryExData,envir=environment(),package="rworldmap")
-# dF <- merge(countryExData,countryRegions,by.x='ISO3V10',by.y='ISO3') %>% 
-#   clean_names()
-
-gbd_shapefile<-dF %>% 
-  country2Region(regionType = "GBD", joinCode = "ISO3")
-
-# gbd_shapefile<- st_read("data/SHAPEFILE/admin_1.shp") %>% # could not find it..
-#   clean_names()
-
-sf::sf_use_s2(FALSE)
-
-spending_2018 <- read_csv("Data/IHME_DAH_DATABASE_1990_2019_Y2020M04D23.CSV") %>%
-  filter(year == 2016)
+dQ3<-data_Q1_alldiseases %>% 
+  group_by(region_wb) %>% 
+  summarise(expenditure_alldiseases_millions=sum(expenditure_alldiseases_millions,
+                                                 na.rm=T))
 
 
-spending_recipient <- spending_2018 %>%
-  select(
-    recipient_isocode, contains(c("hiv", "mal", "tb", "ncd"))
-  )
+ggplot() + 
+coord_sf()+ 
+  geom_sf(data = dQ3,
+                    aes(fill = expenditure_alldiseases_millions))+theme_void()+
+  labs(title="Dollars received by Europe continent in treating all diseases for year 2015",
+       caption = "Source: IHME Development Assistance for Health Database") 
 
-spending_long_alldiseases_recipient <- spending_recipient%>%
-  pivot_longer(cols = contains(c("hiv", "mal", "tb", "ncd"))) %>%
-  mutate(value = as.numeric(value)) %>% 
-  mutate(disease = str_extract(name, "[^_]+")) %>%
-  select(-name) %>% 
-  group_by(recipient_isocode) %>% 
-  summarize(expenditure_alldiseases = sum(value, na.rm = TRUE))%>% 
-  mutate(expenditure_alldiseases_millions=expenditure_alldiseases/1e6)
-
-
-data_Q3_alldiseases <-dF  %>%
-  left_join(spending_long_alldiseases_recipient, c("name"="gbd")) 
+# # gbd_shapefile<- 
+# #   mapByRegion(inFile=world, regionType = "GBD", joinCode = "ISO3")
+# # 
+# # # gbd_shapefile<- st_read("data/SHAPEFILE/admin_1.shp") %>% # could not find it..
+# # #   clean_names()
+# 
+# sf::sf_use_s2(FALSE)
+# 
+# spending_2018 <- read_csv("Data/IHME_DAH_DATABASE_1990_2019_Y2020M04D23.CSV") %>%
+#   filter(year == 2016)
+# 
+# 
+# spending_recipient <- spending_2018 %>%
+#   select(
+#     recipient_isocode, contains(c("hiv", "mal", "tb", "ncd"))
+#   )
+# 
+# spending_long_alldiseases_recipient <- spending_recipient%>%
+#   pivot_longer(cols = contains(c("hiv", "mal", "tb", "ncd"))) %>%
+#   mutate(value = as.numeric(value)) %>% 
+#   mutate(disease = str_extract(name, "[^_]+")) %>%
+#   select(-name) %>% 
+#   group_by(recipient_isocode) %>% 
+#   summarize(expenditure_alldiseases = sum(value, na.rm = TRUE))%>% 
+#   mutate(expenditure_alldiseases_millions=expenditure_alldiseases/1e6)
+# 
+# 
+# data_Q3_alldiseases <-dF  %>%
+#   left_join(spending_long_alldiseases_recipient, c("name"="gbd")) 
 ```
 
 #Part4: Spending by recipient country across time
@@ -183,7 +192,7 @@ spending_recipient_time <- spending_time %>%
     recipient_country, contains(c("hiv", "mal", "tb", "ncd"))
   )
 
-spending_recipient_all_disease_time <- spending_recipient%>%
+spending_recipient_all_disease_time <- spending_recipient_time%>%
   pivot_longer(cols = contains(c("hiv", "mal", "tb", "ncd"))) %>%
   mutate(value = as.numeric(value)) %>% 
   mutate(disease = str_extract(name, "[^_]+")) %>%
@@ -236,18 +245,84 @@ coord_sf()+
 
 ```{r}
 
+library(tmap)
+library(sf)
+library(raster)
+
 sitg<- st_read("data/sitg/CAD_BATIMENT_HORSOL_TOIT_SP.shp") %>% 
   clean_names()
 
+tm_shape(sitg)+
+  tm_polygons()
 ```
 
 #Part8: City plot using OpenStreetMap
 
 ```{r}
 library(rworldmap)
+library(osmdata)
 data(countryRegions,envir=environment(),package="rworldmap")
 
-gbdregions <- countryRegions %>%
-  select(ISO3, ADMIN, GBD) %>%
-  filter(!is.na(GBD))
+# gbdregions <- countryRegions %>%
+#   select(ISO3, ADMIN, GBD) %>%
+#   filter(!is.na(GBD))
+
+getbb("zurich") %>% 
+  opq()
+
+getbb("zurich") %>% 
+    opq() %>%
+  add_osm_feature(
+    key = "highway",
+    value = c(
+      "motorway", "primary",
+      "secondary", "tertiary"
+    )
+  )%>%
+  osmdata_sf()
+
+library(purrr)
+
+
+getbb("zurich") %>%
+  opq() %>%
+  add_osm_feature(
+    key = "highway",
+    value = c(
+      "motorway", "primary",
+      "secondary", "tertiary"
+    )
+  ) %>%
+  osmdata_sf() %>%
+  purrr::pluck("osm_lines") %>%
+  glimpse()
+
+getbb("zurich") %>%
+  opq() %>%
+  add_osm_feature(
+    key = "highway",
+    value = c(
+      "motorway", "primary",
+      "secondary", "tertiary"
+    )
+  ) %>%
+  osmdata_sf() %>%
+  purrr::pluck("osm_lines") %>%
+  ggplot() +
+  geom_sf(aes(color = highway))
+
+opq(c(8.448006, 47.320220,  8.625441,  47.434666)) %>%
+  add_osm_feature(
+    key = "highway",
+    value = c(
+      "motorway", "primary",
+      "secondary", "tertiary"
+    )
+  ) %>%
+  osmdata_sf() %>%
+  purrr::pluck("osm_lines") %>%
+  ggplot() +
+  geom_sf(aes(color = highway)) +
+  theme_void()
+
 ```
