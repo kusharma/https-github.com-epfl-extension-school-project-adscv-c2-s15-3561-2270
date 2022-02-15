@@ -16,6 +16,7 @@ library(dplyr)
 library(janitor)
 library(kableExtra)
 library(tidyr)
+library(slider)
 
 ```
 
@@ -188,26 +189,20 @@ ggplot(data=spc_data_f1, aes(x=timepoint)) +
 
 ```{r}
 
-library(slider)
-
 vec<-spc_data_f1 %>% 
   pull(xbar)
 
+mean_observed<-mean(vec)
+
 highlight<-spc_data_f1 %>% 
-  mutate(is_between=between(xbar,50,52),
+  mutate(is_between=between(xbar,dQ5_xbar$LCL,dQ5_xbar$UCL),
          slide_above_below=case_when(
-           xbar>=51 ~ 1,
-           xbar<51 ~ -1
+           xbar>=mean_observed ~ 1,
+           xbar<mean_observed ~ -1
          ),
        moving_ten_sum= slide_sum(x = slide_above_below,  before = 9)
          # roll_sum = RcppRoll::roll_sum(slide_above_below, 10, align = "right")
            )
-
-
-# mean_observed<-mean(vec)
-# 
-# mean_ref_value <- function(x) all(x >= mean_observed)
-# consec_10_values_high <- slide_lgl(.x = vec, .f = mean_ref_value, .before = 9, .complete = TRUE)
 
 ```
 
