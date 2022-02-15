@@ -212,7 +212,7 @@ highlight<-spc_data_f1 %>%
 ```
 
 
-# Part7: Build Shewhart control charts for factory f1
+# Part7: Build Shewhart control charts for factory f2
 
 ```{r}
 
@@ -270,12 +270,10 @@ library(ggpomological)
   ggplot(data = spc_data_f2, aes(x= week, y= xbar))+
     geom_point() +
   labs(title = "Scatterplot of xbar vs week for factory f2", 
-       y="Xbar value",x="week") + fira::theme_fivethirtyeight()
+       y="Xbar value",x="week") + ggthemes::theme_fivethirtyeight()
   
 
 ```
-
-
 # Part8: Redefining montoring data for factory f2
 
 ```{r}
@@ -304,7 +302,7 @@ ggplot(data=dQ8, aes(x=week)) +
   geom_line(color="black", aes(y=Average_Range),linetype="dotted")+
   geom_line(color="red", aes(y=LCL))+
   geom_line(color="red", aes(y=UCL))+
-  labs(title = "Lineplot of Range vs Timepoint for factory f2", 
+  labs(title = "Lineplot of Range vs Timepoint (by week) for factory f2", 
        subtitle = "LCL and UCL values in red and average range value in black",
        y="Range values",x="week") 
 
@@ -317,19 +315,22 @@ dQ8_xbar<-spc_data_f2 %>%
       .f = ~mean(.x, na.rm = T),         
       .before = 1))
 
-# dQ8_xbar<-spc_data_f2   %>% 
-#   mutate(LCL=Average_xbar-Average_Range*XbarR_constants_week_n5$A2,
-#          UCL=Average_xbar+Average_Range*XbarR_constants_week_n5$A2)
-# 
-# ggplot(data=dQ7_xbar, aes(x=week)) +
-#   geom_line(color="black", aes(y=Average_xbar),linetype="dotted")+
-#   geom_line(color="red", aes(y=LCL))+
-#   geom_line(color="blue", aes(y=UCL))+
-#   labs(title = "Lineplot of Average xbar vs Timepoint for factory f2", 
-#        subtitle = "LCL (red), UCL values (blue) and average xbar value in black",
-#        y="Xbar value",x="week") 
+dQ8_xbar<-dQ8_xbar %>% 
+    mutate(Average_Average_xbar=mean(Average_xbar),
+           LCL= Average_Average_xbar-2.66*MR_bar,
+         UCL=  Average_Average_xbar+2.66*MR_bar)
+
+ggplot(data=dQ8_xbar, aes(x=week)) +
+  geom_line(color="black", aes(y=Average_xbar),linetype="dotted")+
+  geom_line(color="red", aes(y=LCL))+
+  geom_line(color="red", aes(y=UCL))+
+  labs(title = "Lineplot of xbar  vs Timepoint (by week) for factory f2", 
+       subtitle = "LCL and UCL values in red and average range value in black",
+       y="Range values",x="week") 
 
 ```
+
+
 
 #Part 9: Produce a control chart using your own data
 

@@ -29,6 +29,7 @@ library(sf)
 library(forcats)
 library(kableExtra)
 library(ggpomological)
+library(RColorBrewer)
 
 volcano <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-05-12/volcano.csv')
 eruptions <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-05-12/eruptions.csv')
@@ -290,11 +291,14 @@ library(readxl)
 VEI <- read_excel("data/VEI.xlsx") %>% 
   clean_names() %>% 
   drop_na %>% 
-  mutate(vei_scaled=if_else(vei<5,vei/1e9, vei))
+  mutate(vei_scaled=if_else(vei<5,vei/1e9, vei)) %>% 
   mutate(vei_scale=10**(vei))
 
 
 VEI %>% 
   ggplot(date=VEI) +
-  geom_point( aes(x=1, y=vei,size=vei_scale))
+  geom_point(aes(x=1, y=vei_scale/10,size=vei_scale**vei_scale, 
+                 colour= brewer.pal(n = 9, name = "BuGn")))+ scale_y_log10()+ 
+  theme(legend.position = "none") 
+  
 ```
