@@ -297,7 +297,7 @@ VEI <- read_excel("data/VEI.xlsx") %>%
 
 VEI %>% 
   ggplot(date=VEI) +
-  geom_point(aes(x=1, y=vei_scale/10,size=vei_scale**vei_scale, 
+  geom_point(aes(x=1, y=vei,size=vei, 
                  colour= brewer.pal(n = 9, name = "BuGn")))+ scale_y_log10()+ 
   theme(legend.position = "none") 
   

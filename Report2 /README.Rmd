@@ -90,39 +90,62 @@ producers_edges <- edges_data %>%    #edges tibble
   select(to = from, from = new_from)
 #aes(color=role)
 
-  
-producers_edges  %>% 
+nodes_data<-nodes_data %>% 
+  filter(!X1 %in% )
+
+producers_network<-tbl_graph(nodes=nodes_data, 
+                          edges = producers_edges,
+                          directed = FALSE)
+
+producers_network  %>% 
   ggraph() + 
   geom_edge_link(colour = 'grey') + 
   geom_node_point(aes(colour='to')) +
-  geom_node_text( repel=TRUE)+theme_graph()
+  geom_node_text(aes(label=X2, repel=TRUE))+theme_graph()
 
+# How to remove that producer ?
 
 ```
-  
-```
 
-movie <- as_tbl_graph(movie_network, directed = TRUE)
-movie
 
-movie %>% 
-  ggraph() + 
-  geom_edge_link(colour = 'grey') + 
-  geom_node_point(size = 5) +
-  theme_graph()
+#Part4: Clustering
 
+```{r}
 
 # grouping in some categories
 
-movie <-
-  movie %>%
+movies_network <-
+  movies_network %>%
   activate(nodes) %>% 
   mutate(group = group_leading_eigen())
 
 
-movie %>% 
+movies_network %>% 
   mutate(group = as.factor(group)) %>% 
   ggraph() + 
   geom_edge_link(colour = "grey") + 
-  geom_node_point(aes(colour = group), size = 5) +
+  geom_node_point(aes(colour = group), size = 4) +
   theme_graph()
+
+```
+
+#Part5: Touch this graph
+
+```{r message=TRUE, warning=TRUE}
+
+
+
+movies_network %>% 
+  mutate(group = as.factor(group)) %>% 
+  ggraph(layout='kk') + 
+  geom_edge_link(colour = "grey") + 
+  geom_node_point(aes(colour = group), size = 4) +
+  ggforce::geom_mark_hull(mapping = aes(x, y, group = group, fill = group),
+               concavity = 0.5,
+               expand = unit(4, 'mm'),
+               alpha = 0.25,
+               colour = 'white')+
+  rcartocolor::scale_fill_carto_d(palette = "Bold", guide = FALSE)+
+  theme_graph()
+
+```
