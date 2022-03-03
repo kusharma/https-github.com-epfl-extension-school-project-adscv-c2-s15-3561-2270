@@ -295,20 +295,32 @@ VEI <- read_excel("data/VEI.xlsx") %>%
   mutate(vei_scale=10**(vei)) %>% 
   mutate(ejecta_volume=str_trim(ejecta_volume, side = c("both", "left", "right"))) %>% 
   mutate(unit=str_sub(ejecta_volume, start=7)) %>% 
-  mutate(value=c(10^-6, 10^-5,10^-3, 10^-2, 0.1, 1, 10, 100, 1000))
+  mutate(value=c(10^-6, 10^-5,10^-3, 10^-2, 0.1, 1, 10, 100, 1000),
+         value_manual=1,3, 5, 10, 20, 50, 100, 250, 1000)
 
-VEI %>% 
-  ggplot() +
-  geom_point(aes(x=1, y=vei, size=value))
-             
+VEI<-VEI %>% 
+  mutate(value=value*10^6,
+         value_scaled=value^0.33) 
+
+VEI%>% 
+  ggplot(aes(x=1, y=vei)) +
+  geom_point(aes(size = value_scaled)) 
+  
+ # scale_size            
+
+
+
              + scale_y_log10()+ 
   theme(legend.position = "none") 
 
+ggplot(data=VEI, aes(x=1, y=value, size = value)) +
+    geom_point(alpha=0.7)
+
 
 
 VEI %>% 
   ggplot() +
-  geom_point(aes(x=1, y=value,size=value, 
+  geom_point(aes(x=1, y=vei/10,size=value, 
                  colour= brewer.pal(n = 9, name = "BuGn")))+ scale_y_log10()+ 
   theme(legend.position = "none") 
   
