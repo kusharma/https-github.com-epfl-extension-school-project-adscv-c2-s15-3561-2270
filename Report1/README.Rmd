@@ -195,14 +195,38 @@ vec<-spc_data_f1 %>%
 mean_observed<-mean(vec)
 
 highlight<-spc_data_f1 %>% 
+  ungroup() %>% 
   mutate(is_between=between(xbar,dQ5_xbar$LCL,dQ5_xbar$UCL),
          slide_above_below=case_when(
            xbar>=mean_observed ~ 1,
            xbar<mean_observed ~ -1
          ),
-       moving_ten_sum= slide_sum(x = slide_above_below,  before = 9)
+       moving_ten_sum= abs(slide_sum(x = slide_above_below,  before = 10L, step=1L)),
+       highlight_true=if_else(moving_ten_sum>10, TRUE, FALSE), 
+       colour_def= case_when(
+         highlight_true==TRUE ~ 'blue',
+         xbar=!between(xbar, dQ5_xbar$LCL, dQ5_xbar$UCL) ~ 'blue',
+        TRUE ~ 'black'
+       ))
          # roll_sum = RcppRoll::roll_sum(slide_above_below, 10, align = "right")
-           )
+
+# create general highlight =
+# colors differ depending whether highlighting the point or not
+
+# unable to change colours
+
+ggplot(data=highlight, aes(x=timepoint)) +
+  geom_point(aes(y=xbar, color=colour_def),linetype="dotted")+
+  geom_line(color="red", aes(x=timepoint, y=dQ5_xbar$LCL))+
+  geom_line(color="red", aes(x=timepoint, y=dQ5_xbar$UCL))+
+  labs(title = "Lineplot of Average xbar vs Timepoint for factory f1", 
+       subtitle = "LCL and UCL values in red and average xbar value in black",
+       y="Xbar value",x="Timepoint") + 
+  ggthemes::theme_economist_white(base_size = 11, base_family = "sans",
+  gray_bg = TRUE, horizontal = TRUE)
+
+           
+
 
 ```
 
@@ -322,13 +346,5 @@ ggplot(data=dQ8_xbar, aes(x=week)) +
   labs(title = "Lineplot of xbar  vs Timepoint (by week) for factory f2", 
        subtitle = "LCL and UCL values in red and average range value in black",
        y="Range values",x="week") 
-
-```
-
-
-
-#Part 9: Produce a control chart using your own data
-
-```{r}
 
 ```

@@ -44,13 +44,14 @@ edges_data<-movies$text %>%
   read_table( skip=1, col_names = F) %>% 
   rename(from=X1, to=X2)
 
-movies_network<-tbl_graph(nodes=nodes_data, 
+# nodes_data_filtered<-nodes_data %>% 
+#   filter(X1 %in% c(edges_data$to,edges_data$from))
+
+ movies_network<-tbl_graph(nodes=nodes_data, 
                           edges = edges_data,
                           directed = TRUE)
 
 movies_network
-
-library(ggraph)
 
 movies_network %>% 
   ggraph() + 
@@ -61,7 +62,7 @@ movies_network %>%
 
 ```
 
-#Part2: Initial visualizations
+#Part2: Graph with producers and consumers
 
 ```{r}
 
@@ -80,6 +81,11 @@ movies_network %>%
   geom_node_point(aes(colour=role),size = 2) +
   geom_node_text(aes(label = full_name), repel=TRUE)+theme_graph()
 
+```
+
+#Part3: Grouping the network by composers
+
+```{r}
 
 producers_edges <- edges_data %>%    #edges tibble
   group_by(to) %>%    # grouping by composers
@@ -88,12 +94,12 @@ producers_edges <- edges_data %>%    #edges tibble
   filter(from != new_from) %>%    
   ungroup() %>%    
   select(to = from, from = new_from)
-#aes(color=role)
 
-nodes_data<-nodes_data %>% 
-  filter(!X1 %in% )
 
-producers_network<-tbl_graph(nodes=nodes_data, 
+nodes_data_filtered<-nodes_data %>% 
+  filter(X1 %in% c(producers_edges$to,producers_edges$from))
+
+producers_network<-tbl_graph(nodes=nodes_data_filtered, 
                           edges = producers_edges,
                           directed = FALSE)
 
@@ -101,7 +107,9 @@ producers_network  %>%
   ggraph() + 
   geom_edge_link(colour = 'grey') + 
   geom_node_point(aes(colour='to')) +
-  geom_node_text(aes(label=X2, repel=TRUE))+theme_graph()
+  geom_node_text(aes(label=X2, repel=TRUE))+theme_graph() +
+  labs (title= 'Which producers worked with the same composer',
+        caption='data collected from 1960s and 1970s in Hollywood')
 
 # How to remove that producer ?
 
@@ -112,30 +120,30 @@ producers_network  %>%
 
 ```{r}
 
-# grouping in some categories
-
-movies_network <-
-  movies_network %>%
+producers_network_clustered <-
+  producers_network %>%
   activate(nodes) %>% 
   mutate(group = group_leading_eigen())
 
 
-movies_network %>% 
+producers_network_clustered %>% 
   mutate(group = as.factor(group)) %>% 
   ggraph() + 
   geom_edge_link(colour = "grey") + 
-  geom_node_point(aes(colour = group), size = 4) +
-  theme_graph()
+  geom_node_point(aes(colour = group), size = 5) +
+  theme_graph()+
+  labs (title= 'Groups of producers working with the same composer',
+        subtitle='color represents different clusters of composers',
+        caption='data collected from 1960s and 1970s in Hollywood')
 
 ```
+All producers clustered into 3 groups of composers that they have worked with.
 
 #Part5: Touch this graph
 
 ```{r message=TRUE, warning=TRUE}
 
-
-
-movies_network %>% 
+producers_network_clustered %>% 
   mutate(group = as.factor(group)) %>% 
   ggraph(layout='kk') + 
   geom_edge_link(colour = "grey") + 
@@ -146,6 +154,10 @@ movies_network %>%
                alpha = 0.25,
                colour = 'white')+
   rcartocolor::scale_fill_carto_d(palette = "Bold", guide = FALSE)+
-  theme_graph()
+  theme_graph()+
+  labs (title= 'Groups of producers working with the same composer',
+        subtitle='color represents the area of different clustered groups',
+        caption='data collected from 1960s and 1970s in Hollywood')+ 
+  theme(legend.position="bottom")
 
 ```

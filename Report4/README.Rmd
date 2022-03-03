@@ -292,12 +292,23 @@ VEI <- read_excel("data/VEI.xlsx") %>%
   clean_names() %>% 
   drop_na %>% 
   mutate(vei_scaled=if_else(vei<5,vei/1e9, vei)) %>% 
-  mutate(vei_scale=10**(vei))
+  mutate(vei_scale=10**(vei)) %>% 
+  mutate(ejecta_volume=str_trim(ejecta_volume, side = c("both", "left", "right"))) %>% 
+  mutate(unit=str_sub(ejecta_volume, start=7)) %>% 
+  mutate(value=c(10^-6, 10^-5,10^-3, 10^-2, 0.1, 1, 10, 100, 1000))
+
+VEI %>% 
+  ggplot() +
+  geom_point(aes(x=1, y=vei, size=value))
+             
+             + scale_y_log10()+ 
+  theme(legend.position = "none") 
+
 
 
 VEI %>% 
-  ggplot(date=VEI) +
-  geom_point(aes(x=1, y=vei,size=vei, 
+  ggplot() +
+  geom_point(aes(x=1, y=value,size=value, 
                  colour= brewer.pal(n = 9, name = "BuGn")))+ scale_y_log10()+ 
   theme(legend.position = "none") 
   

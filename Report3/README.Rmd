@@ -29,6 +29,7 @@ library(rworldmap)
 library(osmdata)
 library(purrr)
 library(transformr)
+library(brewer)
 
 
 world <- st_read("data/ne_110m_admin_0_countries.shp") %>% 
@@ -154,23 +155,21 @@ coord_sf()+
 
 ```
 
-#Part4: Spending by recipient country across time
+#Part4: Money received by different countries across time
 
 ```{r}
   
-spending_recipient_hiv_time<- read_csv("Data/IHME_DAH_DATABASE_1990_2019_Y2020M04D23.CSV") %>% 
+spending_recipient_disease_time<- read_csv("Data/IHME_DAH_DATABASE_1990_2019_Y2020M04D23.CSV") %>% 
   dplyr::select(recipient_country, year,contains(c("hiv", "mal", "tb", "ncd"))) %>% 
   mutate_at(vars(starts_with("hiv")),funs(as.numeric)) %>% 
   mutate_at(vars(starts_with("mal")),funs(as.numeric)) %>% 
   mutate_at(vars(starts_with("tb")),funs(as.numeric)) %>% 
-  mutate_at(vars(starts_with("ncd")),funs(as.numeric)) %>%   mutate(recipient_country=str_replace(source, "_"," "))
+  mutate_at(vars(starts_with("ncd")),funs(as.numeric)) %>%   mutate(recipient_country=str_replace(recipient_country, "_"," "))
 
 
-spending_recipient_all_hiv_time <- spending_recipient_hiv_time%>%
+spending_recipient_all_disease_time <- spending_recipient_disease_time%>%
   pivot_longer(cols = contains(c("hiv", "mal", "tb", "ncd")), 
                names_to = "name", values_to = "value") %>%
-  #pivot_longer(!recipient_country, names_to = "name", values_to = "value") %>%
-  #mutate(value = as.numeric(value)) %>% 
   mutate(disease = str_extract(name, "[^_]+")) %>%
   dplyr::select(-name) %>% 
   filter(value>1000 ) %>% 
@@ -183,7 +182,7 @@ spending_recipient_all_hiv_time <- spending_recipient_hiv_time%>%
 
 
 data_Q4_alldiseases_recipient <-world  %>%
-  left_join(spending_recipient_all_hiv_time, c("name_long"="recipient_country")) %>% 
+  left_join(spending_recipient_all_disease_time, c("name_long"="recipient_country")) %>% 
   rename(source=name_sort)
 
 ggplot() +
@@ -210,11 +209,11 @@ ggplot() +
   
 ```
 
-#Part4 try: Spending by recipient country across time
+#Part4 extra: Money spent by different countries across time
 
 ```{r}
 
-spending_source_hiv_time<- read_csv("Data/IHME_DAH_DATABASE_1990_2019_Y2020M04D23.CSV") %>% 
+spending_source_disease_time<- read_csv("Data/IHME_DAH_DATABASE_1990_2019_Y2020M04D23.CSV") %>% 
   dplyr::select(source, year,contains(c("hiv", "mal", "tb", "ncd"))) %>% 
   mutate_at(vars(starts_with("hiv")),funs(as.numeric)) %>% 
   mutate_at(vars(starts_with("mal")),funs(as.numeric)) %>% 
@@ -224,7 +223,7 @@ spending_source_hiv_time<- read_csv("Data/IHME_DAH_DATABASE_1990_2019_Y2020M04D2
   mutate(source=str_replace(source, "_"," "))
 
 
-spending_source_all_hiv_time <- spending_source_hiv_time%>%
+spending_source_all_disease_time <- spending_source_disease_time%>%
   pivot_longer(cols = contains(c("hiv", "mal", "tb", "ncd")), 
                names_to = "name", values_to = "value") %>%
   #pivot_longer(!recipient_country, names_to = "name", values_to = "value") %>%
@@ -241,7 +240,7 @@ spending_source_all_hiv_time <- spending_source_hiv_time%>%
 
 
 data_Q4_alldiseases_source <-world  %>%
-  left_join(spending_source_all_hiv_time, c("name_long"="source")) %>% 
+  left_join(spending_source_all_disease_time, c("name_long"="source")) %>% 
   rename(source=name_sort)
 
 ggplot() +
@@ -272,16 +271,26 @@ ggplot() +
 
 ```{r}
 
+library(tmap)
+
 tmap_mode("view") # make interactive
 
 tm_shape(dQ3) + 
-  tm_polygons(col = "expenditure_alldiseases_millions", 
-              style = "quantile", 
-              palette = "-viridis")
+  tm_fill("expenditure_alldiseases_millions", 
+          title = "Expenditure of all diseases", 
+          style = "quantile",
+        palette = "-viridis")+
+  # tm_polygons(col = "expenditure_alldiseases_millions", 
+  #             style = "quantile", 
+  #             palette = "-viridis")+
+tm_layout("Expenditure of all diseases",
+          legend.title.size = 1,
+          legend.text.size = 0.6,
+          legend.position = c("right","top"))
        
 ```
 
-#Part6: Spending by one country: Australia for year 2015
+#Part6: Spending by one continent: Europe for year 2015
 
 ```{r}
 
@@ -304,10 +313,13 @@ europe_cropped <- europe_cropped %>%
 data_Q6_Europe <-europe_cropped  %>%
   left_join(spending_long_alldiseases_recipient, c("iso_a3"="recipient_isocode"))  
 
-europe <- world %>% 
+europe_rectangle <- world %>% 
   filter(continent == "Europe") %>% 
   filter(!sovereignt== "Russia") %>% 
-  st_transform(crs = 'ESRI:54030')
+  st_transform(crs = 'ESRI:54030') %>% 
+  st_bbox() %>% 
+  st_as_sfc() %>% 
+  st_buffer(30000)
 
   
 europe_inset_map <- ggplot() + 
@@ -315,15 +327,51 @@ europe_inset_map <- ggplot() +
           fill = "white",
           size = 0.3,
           colour = "lightgrey") + 
-  geom_sf(data = europe_cropped, 
+  geom_sf(data = europe_rectangle, 
           fill = NA, 
-          color = "red", 
+          color = "magenta", 
           size = 0.8) +
-  theme_void() +
-  coord_sf(xlim = europe_bb[c(1, 3)],
-           ylim = europe_bb[c(2, 4)])
+  theme_void() 
 
 europe_inset_map
+
+world_somerc<-world %>% 
+  st_transform(world, crs=2056)
+
+europe_bb<-world_somerc %>% 
+  filter(continent == "Europe") %>% 
+  filter(!sovereignt== "Russia") %>% 
+  st_bbox() %>% 
+  st_as_sfc() %>% 
+  st_buffer(30000) %>% 
+  st_bbox()
+
+europe_map = ggplot() + 
+  geom_sf(data = world_somerc, colour = "lightgrey",
+          fill = "transparent",
+          size = 0.5)+
+  # geom_sf(data = europe_border,  # how to get this
+  #   fill = "transparent",
+  #   color = "grey",
+  #   size = 1)+ 
+  geom_sf(data = data_Q6_Europe,  # how to get this
+    aes(fill = expenditure_alldiseases_millions),
+    size = 0.2)+
+  #scale_fill_carto_d(palette = "BurgYl") +
+  theme_void() +
+  coord_sf(xlim = st_bbox(europe_bb)[c(1, 3)],
+           ylim = st_bbox(europe_bb)[c(2, 4)]) +
+  labs(title = "Average per capita yearly income by district, in 2018")+
+  guides(fill = guide_legend(title = "", 
+                             label.position = "bottom",
+                             title.position = "top",
+                             nrow = 1))+
+  theme(legend.position = "bottom") +
+  theme(plot.title = element_text(colour = "darkgrey"))
+  
+
+europe_map
+
 
 plot_europe<-ggplot() + 
 coord_sf()+ 
@@ -363,6 +411,8 @@ europe_map = ggplot() +
                              nrow = 1))+
   theme(legend.position = "bottom") +
   theme(plot.title = element_text(colour = "darkgrey"))
+
+europe_map 
        
 ```
 
@@ -376,30 +426,39 @@ library(sf)
 library(raster)
 
 sitg<- st_read("data/sitg/CAD_BATIMENT_HORSOL_TOIT_SP.shp") %>% 
-  clean_names()
+  janitor::clean_names()
 
 osmbb <-  tmaptools::bb(sitg, ext=1.1)
 
 osmtiles <- tmaptools::read_osm(osmbb, type="esri-topo")
 
-tm_shape(osmtiles) + 
-  tm_rgb() +
-  tm_shape(sitg) + 
-  tm_polygons("altitude_m", 
-              style = "quantile", 
-              palette = "-viridis",
+data(World, metro, rivers, land)
+
+tmap_mode("plot")
+## tmap mode set to plotting
+tm_shape(land) +
+    tm_raster("elevation", palette = terrain.colors(10)) +
+tm_shape(World) +
+    tm_borders("white", lwd = .5) +
+    tm_text("iso_a3", size = "AREA") +
+tm_shape(metro) +
+    tm_symbols(col = "red", size = "pop2020", scale = .5) +
+tm_legend(show = FALSE)
+
+tmap_mode("plot")
+tm_shape(osmtiles) +
+   tm_rgb() +
+  tm_shape(sitg) +
+  tm_polygons("altitude_m",
+              style = "quantile",
+              palette = "RdYlGn",
               alpha = 0.6) +
+  tm_tiles("Stamen.TonerLabels")
   tm_layout(frame = FALSE)
 
 # What other layers to plot here????
 
-# tm_shape(sitg)+
-#   tm_raster(palette = "Greys", contrast = c(0.1, 0.6))
-#   tm_polygons(col = "altitude_m", 
-#               style = "quantile", 
-#               palette = "-viridis")+
-#   tm_shape(lakes) +
-#   tm_polygons(col = "lightblue")
+
 ```
 
 #Part8: City plot using OpenStreetMap
